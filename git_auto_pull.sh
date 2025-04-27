@@ -31,8 +31,9 @@ while IFS='=' read -r key value; do
     value="$(echo "$value" | xargs)"
 
     # Remove quotes if there are any
-    value="${value%\"}"
-    value="${value#\"}"
+    #value="${value%\"}"
+    #value="${value#\"}"
+    value=$(sed 's/^"\(.*\)"$/\1/' <<< "$value")
 
     # Skipping empty keys/values
     [[ -z "$key" || -z "$value" ]] && continue
@@ -69,7 +70,7 @@ send_telegram() {
          -d text="$1" > /dev/null
 }
 
-send_signal(){
+send_signal() {
     signal-cli -a $SIGNAL_SENDER send -m "$1" $SIGNAL_RECIPIENT > /dev/null
 }
 
