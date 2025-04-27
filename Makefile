@@ -30,10 +30,6 @@ install: check-root
 	echo -e "\033[1;32m🔧 Starting installation...\033[0m"
 	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
-	ifeq ($(strip $(BIN_FILES) $(SERVICE_FILES) $(CONFIG_FILES) $(CRON_FILES)),)
-		$(error "No files to copy!")
-	fi
-
 	@$(MAKE) copy-bin
 	@$(MAKE) copy-systemd
 	@$(MAKE) copy-conf
@@ -56,7 +52,7 @@ check-root:
 
 # Copy binaries
 copy-bin:
-	ifneq ($(BIN_FILES),)
+	if [ -n "$(BIN_FILES)" ]; then
 		for file in $(BIN_FILES); do \
 			dest="$(BIN_DIR)/$$(basename $$file)"; \
 			echo -e "\033[1;32m📂 Copying $$file -> $(BIN_DIR)\033[0m"; \
