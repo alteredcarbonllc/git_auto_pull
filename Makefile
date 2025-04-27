@@ -137,3 +137,4 @@ restart-cron:
 		echo -e "\033[1;34m🔄 Restarting cron service...\033[0m"; \
 		systemctl restart cron || systemctl restart crond; \
 	fi
+
