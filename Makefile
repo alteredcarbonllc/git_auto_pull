@@ -19,14 +19,14 @@ REINSTALL ?= false
 install:
 	# Checking root rights
 	if [[ "$$(id -u)" -ne 0 ]]; then
-		echo -e "\033[1;31m❌ Error: This script must be run as root!❌\033[0m" >&2; \
+		echo -e "\033[1;31m❌ Error: This script must be run as root!❌\033[0m" > /dev/null 2>&1; \
 		exit 1
 	fi
 
 	# Starting line
-	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	echo -e "\033[1;32m🔧 Starting installation...\033[0m"
-	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
+	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m" > /dev/null 2>&1
+	echo -e "\033[1;32m🔧 Starting installation...\033[0m" > /dev/null 2>&1
+	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m" > /dev/null 2>&1
 
 	# Copy binaries
 	for file in $(BIN_FILES); do \
