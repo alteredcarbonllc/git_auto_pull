@@ -17,11 +17,6 @@ REINSTALL ?= false
 
 .PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron
 install: check-root
-	echo "BIN_FILES: $(BIN_FILES)"
-	echo "SERVICE_FILES: $(SERVICE_FILES)"
-	echo "CONFIG_FILES: $(CONFIG_FILES)"
-	echo "CRON_FILES: $(CRON_FILES)"
-
 	# Enabling exit on error
 	set -e
 
