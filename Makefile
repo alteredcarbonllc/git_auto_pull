@@ -1,37 +1,34 @@
 SHELL := /bin/bash
 .ONESHELL:
 
-# Пути назначения
+# Destination routes
 BIN_DIR := /usr/bin
 SERVICE_DIR := /etc/systemd/system
 ETC_DIR := /etc
 CRON_DIR := /etc/cron.d
 
-# Что копировать куда
+# What to copy where
 BIN_FILES := git_auto_pull.sh
-SERVICE_FILES := git_auto_pull.timer
+SERVICE_FILES :=
 CONFIG_FILES := git_auto_pull.conf
 CRON_FILES := git_auto_pull
-
-# Таймеры для активации
-TIMER_FILES := git_auto_pull.timer
 
 REINSTALL ?= false
 
 .PHONY: install
 install:
-	# Проверка root-прав
+	# Checking root rights
 	if [[ "$$(id -u)" -ne 0 ]]; then
 		echo -e "\033[1;31m❌ Error: This script must be run as root!❌\033[0m" >&2; \
 		exit 1
 	fi
 
-	# Стартовая линия
+	# Starting line
 	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 	echo -e "\033[1;32m🔧 Starting installation...\033[0m"
 	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
-	# Копируем бинарники
+	# Copy binaries
 	for file in $(BIN_FILES); do \
 		dest="$(BIN_DIR)/$$(basename $$file)"; \
 		echo -e "\033[1;32m📂 Copying $$file -> $(BIN_DIR)\033[0m"; \
@@ -40,17 +37,25 @@ install:
 		if [[ "$$file" == *.sh ]]; then chmod +x "$$dest"; fi; \
 	done
 
-	# Копируем systemd сервисы и таймеры
+	# Copy systemd services and timers
 	for file in $(SERVICE_FILES); do \
 		dest="$(SERVICE_DIR)/$$(basename $$file)"; \
+		if [[ ! -f "$$file" ]]; then \
+			echo -e "\033[1;31m❌ Error: $$file does not exist! Skipping...\033[0m"; \
+			continue; \
+		fi; \
 		echo -e "\033[1;32m📂 Copying $$file -> $(SERVICE_DIR)\033[0m"; \
 		cp "$$file" "$$dest"; \
 		chown root:root "$$dest"; \
 	done
 
-	# Копируем конфиги
+	# Copy configs
 	for file in $(CONFIG_FILES); do \
 		dest="$(ETC_DIR)/$$(basename $$file)"; \
+		if [[ ! -f "$$file" ]]; then \
+			echo -e "\033[1;31m❌ Error: $$file does not exist! Skipping...\033[0m"; \
+			continue; \
+		fi; \
 		if [[ "$$file" == *.conf && -f "$$dest" && "$(REINSTALL)" == "false" ]]; then \
 			echo -e "\033[1;33m⏩ Skipping $$file: already exists.\033[0m"; \
 			continue; \
@@ -60,32 +65,38 @@ install:
 		chown root:root "$$dest"; \
 	done
 
-	# Копируем cron-файлы
+	# Copy cron files
 	for file in $(CRON_FILES); do \
 		dest="$(CRON_DIR)/$$(basename $$file)"; \
+		if [[ ! -f "$$file" ]]; then \
+			echo -e "\033[1;31m❌ Error: $$file does not exist! Skipping...\033[0m"; \
+			continue; \
+		fi; \
 		echo -e "\033[1;32m📂 Copying $$file -> $(CRON_DIR)\033[0m"; \
 		cp "$$file" "$$dest"; \
 		chown root:root "$$dest"; \
 	done
 
-	# Обновляем systemd
+	# Updating systemd
 	echo -e "\033[1;34m🔄 Reloading systemd...\033[0m"
 	systemctl daemon-reload
 
-	# Запускаем таймеры
-	for timer in $(TIMER_FILES); do \
-		echo -e "\033[1;32m⏳ Enabling and starting $$timer...\033[0m"; \
-		systemctl enable "$$timer"; \
-		systemctl start "$$timer"; \
+	# Launch timers from the list of services
+	for file in $(SERVICE_FILES); do \
+		if [[ "$$file" == *.timer ]]; then \
+			echo -e "\033[1;32m⏳ Enabling and starting $$file...\033[0m"; \
+			systemctl enable "$(SERVICE_DIR)/$$file"; \
+			systemctl start "$(SERVICE_DIR)/$$file"; \
+		fi; \
 	done
 
-	# Перезапуск cron
+	# Restart cron
 	if [[ "$(CRON_FILES)" != "" ]]; then \
 		echo -e "\033[1;34m🔄 Restarting cron service...\033[0m"; \
 		systemctl restart cron || systemctl restart crond; \
 	fi
 
-	# Завершающая линия
+	# Finishing line
 	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 	echo -e "\033[1;32m✔️ Installation completed successfully!\033[0m"
 	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
