@@ -40,6 +40,7 @@ install: check-root
 
 # Check if running as root
 check-root:
+	echo "UID = $$(id -u)"
 	if [[ "$$(id -u)" -ne 0 ]]; then \
 		echo -e "\033[1;31m❌ Error: This script must be run as root!❌\033[0m" >&2; \
 		exit 1; \
