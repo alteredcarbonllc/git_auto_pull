@@ -31,7 +31,8 @@ install: check-root
 	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 	ifeq ($(strip $(BIN_FILES) $(SERVICE_FILES) $(CONFIG_FILES) $(CRON_FILES)),)
-	$(error "No files to copy!")
+		$(error "No files to copy!")
+	fi
 
 	@$(MAKE) copy-bin
 	@$(MAKE) copy-systemd
