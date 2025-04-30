@@ -18,12 +18,12 @@ REINSTALL ?= false
 .PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron
 install: check-root
 	# Enabling exit on error
-	set -e
+	@set -e
 
 	# Starting line
-	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	echo -e "\033[1;32m🔧 Starting installation...\033[0m"
-	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
+	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
+	@echo -e "\033[1;32m🔧 Starting installation...\033[0m"
+	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 	@$(MAKE) copy-bin
 	@$(MAKE) copy-systemd
@@ -34,21 +34,21 @@ install: check-root
 	@$(MAKE) restart-cron
 
 	# Finishing line
-	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	echo -e "\033[1;32m✔️ Installation completed successfully!\033[0m"
-	echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
+	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
+	@echo -e "\033[1;32m✔️ Installation completed successfully!\033[0m"
+	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 # Check if running as root
 check-root:
-	echo "UID = $$(id -u)"
-	if [[ "$$(id -u)" -ne 0 ]]; then \
+	@echo "UID = $$(id -u)"
+	@if [[ "$$(id -u)" -ne 0 ]]; then \
 		echo -e "\033[1;31m❌ Error: This script must be run as root!❌\033[0m" >&2; \
 		exit 1; \
 	fi
 
 # Copy binaries
 copy-bin:
-	if [ -n "$(BIN_FILES)" ]; then
+	@if [ -n "$(BIN_FILES)" ]; then
 		for file in $(BIN_FILES); do \
 			dest="$(BIN_DIR)/$$(basename $$file)"; \
 			echo -e "\033[1;32m📂 Copying $$file -> $(BIN_DIR)\033[0m"; \
@@ -62,7 +62,7 @@ copy-bin:
 
 # Copy systemd services and timers
 copy-systemd:
-	if [ -n "$(SERVICE_FILES)" ]; then
+	@if [ -n "$(SERVICE_FILES)" ]; then
 		for file in $(SERVICE_FILES); do \
 			dest="$(SERVICE_DIR)/$$(basename $$file)"; \
 			if [[ ! -f "$$file" ]]; then \
@@ -79,7 +79,7 @@ copy-systemd:
 
 # Copy configs
 copy-conf:
-	if [ -n "$(CONFIG_FILES)" ]; then
+	@if [ -n "$(CONFIG_FILES)" ]; then
 		for file in $(CONFIG_FILES); do \
 			dest="$(ETC_DIR)/$$(basename $$file)"; \
 			if [[ ! -f "$$file" ]]; then \
@@ -100,7 +100,7 @@ copy-conf:
 
 # Copy cron files
 copy-cron:
-	if [ -n "$(CRON_FILES)" ]; then
+	@if [ -n "$(CRON_FILES)" ]; then
 		for file in $(CRON_FILES); do \
 			dest="$(CRON_DIR)/$$(basename $$file)"; \
 			if [[ ! -f "$$file" ]]; then \
@@ -117,7 +117,7 @@ copy-cron:
 
 # Launch timers from the list of services
 launch-timers:
-	if [ -n "$(SERVICE_FILES)" ]; then
+	@if [ -n "$(SERVICE_FILES)" ]; then
 		for file in $(SERVICE_FILES); do \
 			if [[ "$$file" == *.timer ]]; then \
 				echo -e "\033[1;32m⏳ Enabling and starting $$file...\033[0m"; \
@@ -129,12 +129,12 @@ launch-timers:
 
 # Updating systemd
 updating-systemd:
-	echo -e "\033[1;34m🔄 Reloading systemd...\033[0m"
-	systemctl daemon-reload
+	@echo -e "\033[1;34m🔄 Reloading systemd...\033[0m"
+	@systemctl daemon-reload
 
 # Restart cron
 restart-cron:
-	if [[ "$(CRON_FILES)" != "" ]]; then \
+	@if [[ "$(CRON_FILES)" != "" ]]; then \
 		echo -e "\033[1;34m🔄 Restarting cron service...\033[0m"; \
 		systemctl restart cron || systemctl restart crond; \
 	fi
