@@ -35,7 +35,7 @@ install: check-root
 
 	# Starting line
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	@print-notify "🔧 Starting installation..."
+	$(call print-notify,🔧 Starting installation...)
 	#@echo -e "\033[1;32m🔧 Starting installation...\033[0m"
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
@@ -49,7 +49,7 @@ install: check-root
 
 	# Finishing line
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	@print-notify "✔️ Installation completed successfully!"
+	$(call print-notify,✔️ Installation completed successfully!)
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 # Check if running as root
