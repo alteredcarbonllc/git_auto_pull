@@ -18,12 +18,13 @@ CRON_FILES := git_auto_pull
 REINSTALL ?= false
 
 define print-notify
-	@msg="$(1)"; if [ -x /usr/bin/git_auto_pull.sh ]; then \
+	@bash -c 'msg="$(1)"; \
+	if [ -x /usr/bin/git_auto_pull.sh ]; then \
 		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
-		/usr/bin/git_auto_pull.sh --msg "$${msg}"; \
+		/usr/bin/git_auto_pull.sh --msg "$$msg"; \
 	else \
 		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
-	fi
+	fi'
 endef
 
 .PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron
