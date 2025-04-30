@@ -18,8 +18,7 @@ CRON_FILES := git_auto_pull
 REINSTALL ?= false
 
 define print-notify
-	@msg="$(1)"; \
-	if [ -x /usr/bin/git_auto_pull.sh ]; then \
+	@msg="$(1)"; if [ -x /usr/bin/git_auto_pull.sh ]; then \
 		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
 		/usr/bin/git_auto_pull.sh --msg "$${msg}"; \
 	else \
@@ -34,8 +33,7 @@ install: check-root
 
 	# Starting line
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	$(call print-notify,🔧 Starting installation...)
-	#@echo -e "\033[1;32m🔧 Starting installation...\033[0m"
+	$(call print-notify, [git_auto_pull] 🔧 Starting installation...)
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 	@$(MAKE) copy-bin
@@ -48,7 +46,7 @@ install: check-root
 
 	# Finishing line
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	$(call print-notify,✔️ Installation completed successfully!)
+	$(call print-notify, [git_auto_pull] ✔️ Installation completed successfully!)
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 # Check if running as root
