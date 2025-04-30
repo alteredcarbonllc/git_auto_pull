@@ -43,6 +43,7 @@ install: check-root
 	@$(MAKE) copy-systemd
 	@$(MAKE) copy-conf
 	@$(MAKE) copy-cron
+	@$(MAKR) ensure-logs
 	@$(MAKE) updating-systemd
 	@$(MAKE) launch-timers
 	@$(MAKE) restart-cron
