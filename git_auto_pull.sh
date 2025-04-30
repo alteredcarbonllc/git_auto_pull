@@ -185,7 +185,6 @@ update_project() {
     fi
 }
 
-
 # Handling command line switches
 if [[ "$1" == "--msg" || "$1" == "--telegram" ]]; then
     shift
