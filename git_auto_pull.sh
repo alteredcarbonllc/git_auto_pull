@@ -163,7 +163,10 @@ for id in "${project_ids[@]}"; do
             project_name="$path"  # If the directory is unavailable - fallback
         fi
 
-        echo "▶ Проект $id: $project_name ($branch)"
+        msg="🔄 Оновляємо проект *$project_name* на гілці *$branch*."
+        echo "$(date '+%F %T') [INFO] 🔄 Оновляємо проект $msg" >> "$LOG_FILE"
+        send_message "$msg"
+        echo "▶ Оновляємо проект $id: $project_name ($branch)"
         update_project "$path" "$branch"
         status=$?
         #echo "Status = $status" >> "$LOG_FILE"
