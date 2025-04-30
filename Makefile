@@ -7,6 +7,8 @@ SERVICE_DIR := /etc/systemd/system
 ETC_DIR := /etc
 CRON_DIR := /etc/cron.d
 
+LOG_FILE := install.log
+
 # What to copy where
 BIN_FILES := git_auto_pull.sh
 SERVICE_FILES :=
@@ -15,6 +17,17 @@ CRON_FILES := git_auto_pull
 
 REINSTALL ?= false
 
+define print-notify
+	@msg="$(1)"; \
+	echo -e "$($(2)) $${msg}$(NC)" | tee -a $(LOG_FILE); \
+	if [ -x /usr/bin/git_auto_pull.sh ]; then \
+		echo -e "$("\033[1;32m $${msg} \033[0m" | tee -a $(LOG_FILE); \
+		/usr/bin/git_auto_pull.sh --msg "$${msg}"; \
+	else \
+		echo -e "$("\033[1;32m $${msg} \033[0m" | tee -a $(LOG_FILE); \
+	fi
+endef
+
 .PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron
 install: check-root
 	# Enabling exit on error
@@ -22,7 +35,8 @@ install: check-root
 
 	# Starting line
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	@echo -e "\033[1;32m🔧 Starting installation...\033[0m"
+	@print-notify "🔧 Starting installation..."
+	#@echo -e "\033[1;32m🔧 Starting installation...\033[0m"
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 	@$(MAKE) copy-bin
@@ -35,7 +49,7 @@ install: check-root
 
 	# Finishing line
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-	@echo -e "\033[1;32m✔️ Installation completed successfully!\033[0m"
+	@print-notify "✔️ Installation completed successfully!"
 	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 # Check if running as root
