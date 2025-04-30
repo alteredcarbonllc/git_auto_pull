@@ -169,7 +169,6 @@ for id in "${project_ids[@]}"; do
         echo "▶ Оновляємо проект $id: $project_name ($branch)"
         update_project "$path" "$branch"
         status=$?
-        #echo "Status = $status" >> "$LOG_FILE"
 
         # Handling statuses via the case construct
         case $status in
