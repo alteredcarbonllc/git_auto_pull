@@ -174,7 +174,8 @@ update_project() {
     fi
 
     # === Sending a message ===
-    msg="🔄 Виявлено зміни в репозиторії *$path*. Оновлюємо..."
+    project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
+    msg="🔄 Виявлено зміни в репозиторії *$project_name*. Оновлюємо..."
     echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
     send_message $msg
 
