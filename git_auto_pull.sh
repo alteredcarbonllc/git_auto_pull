@@ -93,8 +93,8 @@ send_message() {
     [[ "$SEND_XMPP" == "1" ]] && send_xmpp "$message"
 }
 
-# === Updating the project ===
-update_project() {
+# === Updating the project (old version) ===
+old_update_project() {
     local path="$1"
     local branch="$2"
 
@@ -135,6 +135,56 @@ echo 1  # Error: project directory *$path* is unavailable or does not exist
     #echo  "Result = $result"
     return "${result}"
 }
+
+# === Updating the project (30/04/2025 version) ===
+update_project() {
+    local path="$1"
+    local branch="$2"
+
+    # Checking directory availability
+    if ! sudo -u "$USER" test -d "$path"; then
+        echo "$(date '+%F %T') [ERROR] Каталог проекту недоступний: $path" >> "$LOG_FILE"
+        send_message "❌ Помилка: каталог проекту *$path* недоступний або не існує."
+        return 1
+    fi
+
+    # Get current and remote HEAD
+    local HEADS
+    HEADS=$(sudo -u "$USER" bash -c "
+        cd \"$path\" || exit 1
+        git fetch origin
+        echo \$(git rev-parse HEAD) \$(git rev-parse origin/$branch)
+    ") || { echo 1; return 1; }
+
+    local LOCAL_HEAD REMOTE_HEAD
+    read -r LOCAL_HEAD REMOTE_HEAD <<< "$HEADS"
+
+    # If HEADs are the same - no changes
+    if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then
+        return 3
+    fi
+
+    # Checking differences
+    if sudo -u "$USER" bash -c "
+        cd \"$path\" && git diff --exit-code origin/$branch > /dev/null
+    "; then
+        # There are no differences (only fast-forward is possible)
+        return 3
+    fi
+
+    # === Sending a message ===
+    send_message "🔄 Виявлено зміни в репозиторії *$path*. Оновлюємо..."
+
+    # Let's try to update
+    if sudo -u "$USER" bash -c "
+        cd \"$path\" && git pull origin $branch > /dev/null 2>&1
+    "; then
+        return 0  # Successfully
+    else
+        return 2  # Error while pulling
+    fi
+}
+
 
 # Handling command line switches
 if [[ "$1" == "--msg" || "$1" == "--telegram" ]]; then
