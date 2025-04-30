@@ -139,6 +139,7 @@ launch-timers:
 		done
 	fi
 
+
 # Updating systemd
 updating-systemd:
 	@echo -e "\033[1;34m🔄 Reloading systemd...\033[0m"
