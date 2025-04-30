@@ -177,7 +177,7 @@ update_project() {
     project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
     msg="🔄 Виявлено зміни в репозиторії *$project_name*, що лежить у директорії $path . Оновлюємо..."
     echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
-    send_message $msg
+    send_message "$msg"
 
     # Let's try to update
     if sudo -u "$USER" bash -c "
