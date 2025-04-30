@@ -19,12 +19,11 @@ REINSTALL ?= false
 
 define print-notify
 	@msg="$(1)"; \
-	echo -e "$($(2)) $${msg}$(NC)" | tee -a $(LOG_FILE); \
 	if [ -x /usr/bin/git_auto_pull.sh ]; then \
-		echo -e "$("\033[1;32m $${msg} \033[0m" | tee -a $(LOG_FILE); \
+		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
 		/usr/bin/git_auto_pull.sh --msg "$${msg}"; \
 	else \
-		echo -e "$("\033[1;32m $${msg} \033[0m" | tee -a $(LOG_FILE); \
+		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
 	fi
 endef
 
