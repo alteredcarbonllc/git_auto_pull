@@ -2,14 +2,16 @@ SHELL := /bin/bash
 .ONESHELL:
 
 # Destination routes
+LOGS_DIR := /var/log
 BIN_DIR := /usr/bin
 SERVICE_DIR := /etc/systemd/system
 ETC_DIR := /etc
 CRON_DIR := /etc/cron.d
 
-LOG_FILE := install.log
+INSTALL_LOG_FILE := install.log
 
 # What to copy where
+LOGS_FILES := git_auto_pull.log
 BIN_FILES := git_auto_pull.sh
 SERVICE_FILES :=
 CONFIG_FILES := git_auto_pull.conf
@@ -20,14 +22,14 @@ REINSTALL ?= false
 define print-notify
 	@bash -c 'msg="$(1)"; \
 	if [ -x /usr/bin/git_auto_pull.sh ]; then \
-		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
+		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(INSTALL_LOG_FILE); \
 		/usr/bin/git_auto_pull.sh --msg "$$msg"; \
 	else \
-		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(LOG_FILE); \
+		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(INSTALL_LOG_FILE); \
 	fi'
 endef
 
-.PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron
+.PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron ensure-logs
 install: check-root
 	# Enabling exit on error
 	@set -e
@@ -108,6 +110,23 @@ copy-conf:
 		done
 	else
 		echo -e "\033[1;33m⚠️ No config files to copy, skipping...\033[0m"
+	fi
+
+# Ensure log files exist
+ensure-logs:
+	@if [ -n "$(LOGS_FILES)" ]; then \
+		for file in $(LOGS_FILES); do \
+			dest="$(LOGS_DIR)/$$(basename $$file)"; \
+			if [[ -f "$$dest" ]]; then \
+				echo -e "\033[1;33m⏩ Skipping $$dest: already exists.\033[0m"; \
+				continue; \
+			fi; \
+			echo -e "\033[1;32m📝 Creating empty log file: $$dest\033[0m"; \
+			touch "$$dest" || { echo -e "\033[1;31m❌ Error creating $$dest\033[0m"; exit 1; }; \
+			chown root:root "$$dest"; \
+		done \
+	else \
+		echo -e "\033[1;33m⚠️ No log files specified, skipping...\033[0m"; \
 	fi
 
 # Copy cron files

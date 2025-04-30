@@ -1,6 +1,7 @@
 #!/bin/bash
 
 CONFIG_FILE="/etc/git_auto_pull.conf"
+LOG_FILE="/var/log/git_auto_pull.log"
 
 # Checking if a configuration file exists
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -173,7 +174,9 @@ update_project() {
     fi
 
     # === Sending a message ===
-    send_message "🔄 Виявлено зміни в репозиторії *$path*. Оновлюємо..."
+    msg="🔄 Виявлено зміни в репозиторії *$path*. Оновлюємо..."
+    echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+    send_message $msg
 
     # Let's try to update
     if sudo -u "$USER" bash -c "
