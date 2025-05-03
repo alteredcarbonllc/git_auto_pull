@@ -3,66 +3,81 @@
 CONFIG_FILE="/etc/git_auto_pull.conf"
 LOG_FILE="/var/log/git_auto_pull.log"
 
-# Checking if a configuration file exists
-if [ ! -f "$CONFIG_FILE" ]; then
-    ERR_MSG="❌ [Git Auto Pull] Конфігураційний файл $CONFIG_FILE не знайдено. Завершуємо виконання."
-    echo "$(date '+%F %T') [ERROR] ${ERR_MSG}" >> "$LOG_FILE"
-    echo "${ERR_MSG}"
-    exit 1
-fi
-
-# --- 1. Parse the [var] section ---
-var_section=$(awk '/^\[var\]/ {flag=1; next} /^\[/ {flag=0} flag' "$CONFIG_FILE")
-
-while IFS='=' read -r key value; do
-    key=$(echo "$key" | sed 's/^\$//; s/ //g')
-    value=$(echo "$value" | sed 's/^"\(.*\)"$/\1/')
-    export "$key=$value"
-done <<< "$var_section"
-
-# Get all rows from the [projects] section
-project_lines=$(awk '/^\[projects\]/ {flag=1; next} /^\[/ {flag=0} flag' ${CONFIG_FILE})
-
-while IFS='=' read -r key value; do
-    # Skip blank lines and comments
-    [[ -z "$key" || "$key" =~ ^# ]] && continue
-
-    # Remove spaces around
-    key="$(echo "$key" | xargs)"
-    value="$(echo "$value" | xargs)"
-
-    # Remove quotes if there are any
-    #value="${value%\"}"
-    #value="${value#\"}"
-    value=$(sed 's/^"\(.*\)"$/\1/' <<< "$value")
-
-    # Skipping empty keys/values
-    [[ -z "$key" || -z "$value" ]] && continue
-
-    # Save to associative array (if bash >= 4) or export as variables
-    export "$key=$value"
-done <<< "$project_lines"
-
-# --- 2. Parse the [projects] section ---
-projects_section=$(awk '/^\[projects\]/ {flag=1; next} /^\[/ {flag=0} flag' "$CONFIG_FILE")
-
-declare -A project_paths
-declare -A project_branches
-project_ids=()
-
-while IFS='=' read -r key value; do
-    key=$(echo "$key" | xargs)
-    value=$(echo "$value" | sed 's/^"\(.*\)"$/\1/')
-
-    if [[ $key =~ ^project([0-9]+)_path$ ]]; then
-        id=${BASH_REMATCH[1]}
-        project_paths[$id]="$value"
-        project_ids+=("$id")
-    elif [[ $key =~ ^project([0-9]+)_branch$ ]]; then
-        id=${BASH_REMATCH[1]}
-        project_branches[$id]="$value"
+check_config_file() {
+    if [ ! -f "$CONFIG_FILE" ]; then
+        local err="❌ [Git Auto Pull] Конфігураційний файл $CONFIG_FILE не знайдено. Завершуємо виконання."
+        echo "$(date '+%F %T') [ERROR] $err" >> "$LOG_FILE"
+        echo "$err"
+        exit 1
     fi
-done <<< "$projects_section"
+}
+
+parse_var_section() {
+    local section=$(awk '/^\[var\]/ {flag=1; next} /^\[/ {flag=0} flag' "$CONFIG_FILE")
+    while IFS='=' read -r key value; do
+        key=$(echo "$key" | sed 's/^\$//; s/ //g')
+        value=$(echo "$value" | sed 's/^\"\(.*\)\"$/\1/')
+        export "$key=$value"
+    done <<< "$section"
+}
+
+parse_projects_section() {
+    local section=$(awk '/^\[projects\]/ {flag=1; next} /^\[/ {flag=0} flag' "$CONFIG_FILE")
+
+    declare -gA project_paths
+    declare -gA project_branches
+    declare -ga project_ids
+
+    while IFS='=' read -r key value; do
+        key=$(echo "$key" | xargs)
+        value=$(echo "$value" | sed 's/^\"\(.*\)\"$/\1/')
+
+        if [[ $key =~ ^project([0-9]+)_path$ ]]; then
+            id=${BASH_REMATCH[1]}
+            project_paths[$id]="$value"
+            project_ids+=("$id")
+        elif [[ $key =~ ^project([0-9]+)_branch$ ]]; then
+            id=${BASH_REMATCH[1]}
+            project_branches[$id]="$value"
+        fi
+    done <<< "$section"
+}
+
+handle_command_line() {
+    if [[ "$1" == "--msg" || "$1" == "--telegram" ]]; then
+        shift
+        if [[ -z "$1" ]]; then
+            echo "❌ Error: Message not sent."
+            exit 1
+        fi
+        local msg="$*"
+        echo "➡ Sending a message: $msg"
+        send_message "$msg"
+        echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+        exit 0
+    fi
+}
+
+process_projects() {
+    for id in "${project_ids[@]}"; do
+        local path="${project_paths[$id]}"
+        local branch="${project_branches[$id]}"
+
+        if [[ -n "$path" && -n "$branch" ]]; then
+            if sudo -u "$USER" test -d "$path"; then
+                project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
+            else
+                project_name="$path"
+            fi
+
+            echo "▶ Оновлюємо проект $id: $project_name ($branch)"
+            update_project "$path" "$branch"
+            status=$?
+
+            handle_project_status "$status" "$project_name" "$branch"
+        fi
+    done
+}
 
 send_telegram() {
     curl -s -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
@@ -84,10 +99,15 @@ send_xmpp() {
 }
 
 send_message() {
-    local message="$1"
+    local base_message="$1"
     local date_message="$(date '+%F %T')"
-    message="[$date_message] $message"
+    local message="[$date_message]"
 
+    if [[ -n "$PAM_USER" && -n "$PAM_RHOST" && -n "$PAM_TTY" ]]; then
+        message+=" user=$PAM_USER from=$PAM_RHOST tty=$PAM_TTY 🔐 Login detected"
+    else
+        message+=" $base_message"
+    fi
 
     [[ "$SEND_TELEGRAM" == "1" ]] && send_telegram "$message"
     [[ "$SEND_SIGNAL" == "1" ]] && send_signal "$message"
@@ -189,79 +209,48 @@ update_project() {
     fi
 }
 
-# Handling command line switches
-if [[ "$1" == "--msg" || "$1" == "--telegram" ]]; then
-    shift
-    if [[ -z "$1" ]]; then
-        echo "❌ Error: Message not sent."
-        exit 1
-    fi
-    msg="$*"
-    echo "➡ Sending a message: $msg"
-    send_message "$msg"
-    echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
-    exit 0
-fi
+handle_project_status() {
+    local status="$1"
+    local project_name="$2"
+    local branch="$3"
+    local msg
 
-# --- 3. Обрабатываем проекты ---
-for id in "${project_ids[@]}"; do
-    path="${project_paths[$id]}"
-    branch="${project_branches[$id]}"
+    case $status in
+        0)
+            msg="OK ✅ Оновлено проект *$project_name* на гілці *$branch*."
+            echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+            send_message "$msg"
+            ;;
+        2)
+            msg="FAIL ❌ Помилка при оновленні проекту *$project_name* на гілці *$branch*."
+            echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
+            send_message "$msg"
+            ;;
+        3)
+            msg="SKIP 🔄 Без змін для *$project_name* ($branch)"
+            echo "$(date '+%F %T') $msg"
+            ;;
+        1)
+            msg="❌ Помилка: проектна директорія $project_name недоступна або не існує."
+            echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
+            send_message "$msg"
+            exit 1
+            ;;
+        *)
+            msg="❌ Невідома помилка при обробці проекту *$project_name* на гілці *$branch*."
+            echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
+            send_message "$msg"
+            exit 1
+            ;;
+    esac
+}
 
-    if [[ -n "$path" && -n "$branch" ]]; then
-        # Получаем имя проекта
-        if sudo -u "$USER" test -d "$path"; then
-            project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
-        else
-            project_name="$path"  # If the directory is unavailable - fallback
-        fi
+main() {
+    check_config_file
+    parse_var_section
+    parse_projects_section
+    handle_command_line "$@"
+    process_projects
+}
 
-        #msg="🔄 Оновляємо проект *$project_name* на гілці *$branch*."
-        #echo "$(date '+%F %T') [INFO] 🔄 Оновляємо проект $msg" >> "$LOG_FILE"
-        #send_message "$msg"
-        echo "▶ Оновляємо проект $id: $project_name ($branch)"
-        update_project "$path" "$branch"
-        status=$?
-
-        # Handling statuses via the case construct
-        case $status in
-            0)
-                # Successful update
-                msg="OK ✅ Оновлено проект *$project_name* на гілці *$branch*."
-                echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
-                send_message "$msg"
-                ;;
-            2)
-                # Error during update
-                msg="FAIL ❌ Помилка при оновленні проекту *$project_name* на гілці *$branch*."
-                echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
-                send_message "$msg"
-                ;;
-            3)
-                # No changes
-                msg="SKIP 🔄 Без змін для *$project_name* ($branch)"
-                # Logging and sending a message is not required for status 3
-                echo "$(date '+%F %T') $msg"
-                ;;
-            1)
-                # Error with directories
-                msg="❌ Помилка: проектна директорія $project_name недоступна або не існує.."
-                echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
-                send_message "$msg"
-                exit 1  # We end the script in case of an error with the directory
-                ;;
-            *)
-                # Unknown exit code
-                msg="❌ Невідома помилка при обробці проекту *$project_name* на гілці *$branch*."
-                echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
-                send_message "$msg"
-                exit 1
-                ;;
-        esac
-        # There is no error in the fact that the project has not been updated.
-        #if [ $status -ne 0 ]; then
-        #    echo "$(date '+%F %T') [ERROR] Проект $path не оновлено." >> "$LOG_FILE"
-        #    exit 1
-        #fi
-    fi
-done
+main "$@"

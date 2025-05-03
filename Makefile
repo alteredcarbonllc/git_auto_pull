@@ -20,25 +20,18 @@ CRON_FILES := git_auto_pull
 REINSTALL ?= false
 
 define print-notify
-	@bash -c 'msg="$(1)"; \
-	if [ -x /usr/bin/git_auto_pull.sh ]; then \
-		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(INSTALL_LOG_FILE); \
-		/usr/bin/git_auto_pull.sh --msg "$$msg"; \
+	@if [ -x /usr/bin/git_auto_pull.sh ]; then \
+		echo -e "\033[1;32m $(1) \033[0m" | tee -a $(INSTALL_LOG_FILE); \
+		/usr/bin/git_auto_pull.sh --msg "$(1)"; \
 	else \
-		echo -e "\033[1;32m $$msg \033[0m" | tee -a $(INSTALL_LOG_FILE); \
-	fi'
+		echo -e "\033[1;32m $(1) \033[0m" | tee -a $(INSTALL_LOG_FILE); \
+	fi
 endef
 
 .PHONY: install check-root copy-bin copy-systemd copy-conf copy-cron updating-systemd launch-timers restart-cron ensure-logs
 install: check-root
-	# Enabling exit on error
 	@set -e
-
-	# Starting line
-	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 	$(call print-notify, [git_auto_pull] 🔧 Starting installation...)
-	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
-
 	@$(MAKE) copy-bin
 	@$(MAKE) copy-systemd
 	@$(MAKE) copy-conf
@@ -47,11 +40,7 @@ install: check-root
 	@$(MAKE) updating-systemd
 	@$(MAKE) launch-timers
 	@$(MAKE) restart-cron
-
-	# Finishing line
-	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 	$(call print-notify, [git_auto_pull] ✔️ Installation completed successfully!)
-	@echo -e "\033[1;34m═══════════════════════════════════════════════════════════════════\033[0m"
 
 # Check if running as root
 check-root:
