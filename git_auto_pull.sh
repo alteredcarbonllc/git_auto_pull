@@ -56,6 +56,16 @@ handle_command_line() {
         echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
         exit 0
     fi
+
+    # Если аргументов нет, но есть PAM-переменные, формируем сообщение
+    if [[ -z "$1" && -n "$PAM_USER" && -n "$PAM_SERVICE" && -n "$PAM_TTY" ]]; then
+        local msg="🔐 PAM login: user *$PAM_USER* via *$PAM_SERVICE* on *$PAM_TTY*"
+        [[ -n "$PAM_RHOST" ]] && msg+=" from *$PAM_RHOST*"
+        echo "➡ Sending PAM message: $msg"
+        send_message "$msg"
+        echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+        exit 0
+    fi
 }
 
 process_projects() {
@@ -103,11 +113,12 @@ send_message() {
     local date_message="$(date '+%F %T')"
     local message="[$date_message]"
 
-    if [[ -n "$PAM_USER" && -n "$PAM_RHOST" && -n "$PAM_TTY" ]]; then
-        message+=" user=$PAM_USER from=$PAM_RHOST tty=$PAM_TTY 🔐 Login detected"
-    else
-        message+=" $base_message"
-    fi
+    #if [[ -n "$PAM_USER" && -n "$PAM_RHOST" && -n "$PAM_TTY" ]]; then
+    #    message+=" user=$PAM_USER from=$PAM_RHOST tty=$PAM_TTY 🔐 Login detected"
+    #else
+    #    message+=" $base_message"
+    #fi
+    message+=" $base_message"
 
     [[ "$SEND_TELEGRAM" == "1" ]] && send_telegram "$message"
     [[ "$SEND_SIGNAL" == "1" ]] && send_signal "$message"
