@@ -1,12 +1,12 @@
 #!/bin/bash
 
 CONFIG_FILE="/etc/git_auto_pull.conf"
-LOG_FILE="/var/log/git_auto_pull.log"
+GAP_LOG_FILE="/var/log/git_auto_pull.log"
 
 check_config_file() {
     if [ ! -f "$CONFIG_FILE" ]; then
         local err="❌ [Git Auto Pull] Конфігураційний файл $CONFIG_FILE не знайдено. Завершуємо виконання."
-        echo "$(date '+%F %T') [ERROR] $err" >> "$LOG_FILE"
+        echo "$(date '+%F %T') [ERROR] $err" >> "$GAP_LOG_FILE"
         echo "$err"
         exit 1
     fi
@@ -53,17 +53,43 @@ handle_command_line() {
         local msg="$*"
         echo "➡ Sending a message: $msg"
         send_message "$msg"
-        echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+        echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
         exit 0
     fi
 
     # Если аргументов нет, но есть PAM-переменные, формируем сообщение
-    if [[ -z "$1" && -n "$PAM_USER" && -n "$PAM_SERVICE" && -n "$PAM_TTY" ]]; then
-        local msg="🔐 PAM login: user *$PAM_USER* via *$PAM_SERVICE* on *$PAM_TTY*"
-        [[ -n "$PAM_RHOST" ]] && msg+=" from *$PAM_RHOST*"
+    #if [[ -z "$1" && -n "$PAM_USER" && -n "$PAM_SERVICE" && -n "$PAM_TTY" ]]; then
+    #    local msg="🔐 PAM login: user *$PAM_USER* via *$PAM_SERVICE* on *$PAM_TTY*"
+    #    [[ -n "$PAM_RHOST" ]] && msg+=" from *$PAM_RHOST*"
+    #    echo "➡ Sending PAM message: $msg"
+    #    send_message "$msg"
+    #    echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
+    #    exit 0
+    #fi
+
+    # PAM mode
+    if [[ -z "$1" && -n "$PAM_USER" && -n "$PAM_SERVICE" && -n "$PAM_TYPE" ]]; then
+        local action=""
+        case "$PAM_TYPE" in
+            open_session)
+                action="Вхід до облікового запису"
+                ;;
+            close_session)
+                action="Вихід з облікового запису"
+                ;;
+            *)
+                action="Подія $PAM_TYPE"
+                ;;
+        esac
+
+        local msg="🔐 $action користувача *$PAM_USER* через *$PAM_SERVICE*"
+        [[ -n "$PAM_RUSER" && "$PAM_RUSER" != "$PAM_USER" ]] && msg+=" від імені *$PAM_RUSER*"
+        [[ -n "$PAM_RHOST" ]] && msg+=" з хоста *$PAM_RHOST*"
+        [[ -n "$PAM_TTY" ]] && msg+=" (термінал: *$PAM_TTY*)"
+
         echo "➡ Sending PAM message: $msg"
         send_message "$msg"
-        echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+        echo "$(date '+%F %T') [PAM] $msg" >> "$GAP_LOG_FILE"
         exit 0
     fi
 }
@@ -132,7 +158,7 @@ old_update_project() {
 
     # Checking directory availability
     if ! sudo -u "$USER" test -d "$path"; then
-        echo "$(date '+%F %T') [ERROR] Каталог проектів недоступний: $path" >> "$LOG_FILE"
+        echo "$(date '+%F %T') [ERROR] Каталог проектів недоступний: $path" >> "$GAP_LOG_FILE"
         send_message "❌ Помилка: каталог проекту *$path* недоступний або не існує."
 echo 1  # Error: project directory *$path* is unavailable or does not exist
         return
@@ -175,7 +201,7 @@ update_project() {
 
     # Checking directory availability
     if ! sudo -u "$USER" test -d "$path"; then
-        echo "$(date '+%F %T') [ERROR] Каталог проекту недоступний: $path" >> "$LOG_FILE"
+        echo "$(date '+%F %T') [ERROR] Каталог проекту недоступний: $path" >> "$GAP_LOG_FILE"
         send_message "❌ Помилка: каталог проекту *$path* недоступний або не існує."
         return 1
     fi
@@ -207,7 +233,7 @@ update_project() {
     # === Sending a message ===
     project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
     msg="🔄 Виявлено зміни в репозиторії *$project_name*, що лежить у директорії $path . Оновлюємо..."
-    echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+    echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
     send_message "$msg"
 
     # Let's try to update
@@ -229,12 +255,12 @@ handle_project_status() {
     case $status in
         0)
             msg="OK ✅ Оновлено проект *$project_name* на гілці *$branch*."
-            echo "$(date '+%F %T') [INFO] $msg" >> "$LOG_FILE"
+            echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
             send_message "$msg"
             ;;
         2)
             msg="FAIL ❌ Помилка при оновленні проекту *$project_name* на гілці *$branch*."
-            echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
+            echo "$(date '+%F %T') [ERROR] $msg" >> "$GAP_LOG_FILE"
             send_message "$msg"
             ;;
         3)
@@ -243,13 +269,13 @@ handle_project_status() {
             ;;
         1)
             msg="❌ Помилка: проектна директорія $project_name недоступна або не існує."
-            echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
+            echo "$(date '+%F %T') [ERROR] $msg" >> "$GAP_LOG_FILE"
             send_message "$msg"
             exit 1
             ;;
         *)
             msg="❌ Невідома помилка при обробці проекту *$project_name* на гілці *$branch*."
-            echo "$(date '+%F %T') [ERROR] $msg" >> "$LOG_FILE"
+            echo "$(date '+%F %T') [ERROR] $msg" >> "$GAP_LOG_FILE"
             send_message "$msg"
             exit 1
             ;;
