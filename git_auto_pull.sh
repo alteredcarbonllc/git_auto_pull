@@ -1,5 +1,8 @@
 #!/bin/bash
 
+export LANG=uk_UA.UTF-8
+export LC_ALL=uk_UA.UTF-8
+
 CONFIG_FILE="/etc/git_auto_pull.conf"
 GAP_LOG_FILE="/var/log/git_auto_pull.log"
 
