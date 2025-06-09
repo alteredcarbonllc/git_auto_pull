@@ -319,13 +319,19 @@ update_project() {
     echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
     send_message "$msg"
 
-    if sudo -u "$USER" bash -c "
-        cd \"$path\" && git pull origin $branch > /dev/null 2>&1
-    "; then
+    if sudo -u "$USER" git -C "$path" pull origin "$branch" > /dev/null 2>&1; then
         return 0
     else
         return 2
     fi
+    
+    #if sudo -u "$USER" bash -c "
+    #    cd \"$path\" && git pull origin $branch > /dev/null 2>&1
+    #"; then
+    #    return 0
+    #else
+    #    return 2
+    #fi
 }
 
 handle_project_status() {
