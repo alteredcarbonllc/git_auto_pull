@@ -216,7 +216,10 @@ update_project() {
         cd \"$path\" || exit 1
         git fetch origin
         echo \$(git rev-parse HEAD) \$(git rev-parse origin/$branch)
-    ") || { echo 1; return 1; }
+    ") || {
+        echo 1
+        return 1
+    }
 
     local LOCAL_HEAD REMOTE_HEAD
     read -r LOCAL_HEAD REMOTE_HEAD <<< "$HEADS"
