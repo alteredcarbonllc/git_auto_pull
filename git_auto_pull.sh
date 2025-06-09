@@ -156,7 +156,7 @@ send_message() {
 }
 
 # === Updating the project (old version) ===
-old_update_project() {
+old_old_update_project() {
     local path="$1"
     local branch="$2"
 
@@ -199,7 +199,7 @@ echo 1  # Error: project directory *$path* is unavailable or does not exist
 }
 
 # === Updating the project (30/04/2025 version) ===
-update_project() {
+old_update_project() {
     local path="$1"
     local branch="$2"
 
@@ -250,6 +250,57 @@ update_project() {
         return 0  # Successfully
     else
         return 2  # Error while pulling
+    fi
+}
+
+# === Updating the project (09/06/2025 version) ===
+update_project() {
+    local path="$1"
+    local branch="$2"
+
+    if ! sudo -u "$USER" test -d "$path"; then
+        echo "$(date '+%F %T') [ERROR] Каталог проекту недоступний: $path" >> "$GAP_LOG_FILE"
+        send_message "❌ Помилка: каталог проекту *$path* недоступний або не існує."
+        return 1
+    fi
+
+    local LOCAL_HEAD REMOTE_HEAD
+    IFS=" " read -r LOCAL_HEAD REMOTE_HEAD < <(
+        sudo -u "$USER" bash -c "
+            cd \"$path\" || exit 1
+            git fetch origin > /dev/null 2>&1 || exit 1
+            echo \$(git rev-parse HEAD) \$(git rev-parse origin/$branch)
+        "
+    )
+
+    # Перевірка, що обидва HEAD отримані
+    if [[ -z "$LOCAL_HEAD" || -z "$REMOTE_HEAD" ]]; then
+        echo "$(date '+%F %T') [ERROR] Не вдалося отримати HEAD-стани для $path" >> "$GAP_LOG_FILE"
+        send_message "⚠️ Помилка отримання HEAD-станів для *$path* (гілка: $branch)"
+        return 1
+    fi
+
+    if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then
+        return 3
+    fi
+
+    if sudo -u "$USER" bash -c "
+        cd \"$path\" && git diff --exit-code origin/$branch > /dev/null
+    "; then
+        return 3
+    fi
+
+    project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
+    msg="🔄 Виявлено зміни в репозиторії *$project_name*, що лежить у директорії $path . Оновлюємо..."
+    echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
+    send_message "$msg"
+
+    if sudo -u "$USER" bash -c "
+        cd \"$path\" && git pull origin $branch > /dev/null 2>&1
+    "; then
+        return 0
+    else
+        return 2
     fi
 }
 
