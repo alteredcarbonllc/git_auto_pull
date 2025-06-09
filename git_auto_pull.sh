@@ -363,13 +363,13 @@ handle_project_status() {
     esac
 }
 
-main() {
+#main() {
     check_config_file
     parse_var_section
     parse_projects_section
     handle_command_line "$@"
     process_projects
     signal-cli -a $SIGNAL_SENDER receive > /dev/null &
-}
+#}
 
-main "$@"
+#main "$@"
