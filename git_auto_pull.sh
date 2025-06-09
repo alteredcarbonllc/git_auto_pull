@@ -348,11 +348,13 @@ handle_project_status() {
         0)
             msg="OK ✅ Оновлено проект *$project_name* на гілці *$branch*."
             echo "$(date '+%F %T') [INFO] $msg" >> "$GAP_LOG_FILE"
+            echo "$(date '+%F %T') $msg"
             send_message "$msg"
             ;;
         2)
             msg="FAIL ❌ Помилка при оновленні проекту *$project_name* на гілці *$branch*."
             echo "$(date '+%F %T') [ERROR] $msg" >> "$GAP_LOG_FILE"
+            echo "$(date '+%F %T') $msg"
             send_message "$msg"
             ;;
         3)
@@ -362,12 +364,14 @@ handle_project_status() {
         1)
             msg="❌ Помилка: проектна директорія $project_name недоступна або не існує."
             echo "$(date '+%F %T') [ERROR] $msg" >> "$GAP_LOG_FILE"
+            echo "$(date '+%F %T') $msg"
             send_message "$msg"
             exit 1
             ;;
         *)
             msg="❌ Невідома помилка при обробці проекту *$project_name* на гілці *$branch*."
             echo "$(date '+%F %T') [ERROR] $msg" >> "$GAP_LOG_FILE"
+            echo "$(date '+%F %T') $msg"
             send_message "$msg"
             exit 1
             ;;
