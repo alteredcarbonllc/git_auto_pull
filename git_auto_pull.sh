@@ -307,12 +307,6 @@ update_project() {
     if sudo -u "$USER" git -C "$path" diff --exit-code "origin/$branch" > /dev/null; then
         return 3
     fi
-    
-    #if sudo -u "$USER" bash -c "
-    #    cd \"$path\" && git diff --exit-code origin/$branch > /dev/null
-    #"; then
-    #    return 3
-    #fi
 
     project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
     msg="🔄 Виявлено зміни в репозиторії *$project_name*, що лежить у директорії $path . Оновлюємо..."
