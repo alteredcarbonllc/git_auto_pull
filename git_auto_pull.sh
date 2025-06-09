@@ -125,8 +125,19 @@ send_telegram() {
          -d text="$1" > /dev/null
 }
 
+escape_for_signal() {
+  local input="$1"
+  # Экранируем двойные кавычки и обратные слэши
+  input="${input//\\/\\\\}"   # обратный слэш -> двойной обратный слэш
+  input="${input//\"/\\\"}"   
+  echo "$input"
+}
+#"
+
 send_signal() {
-    signal-cli -a $SIGNAL_SENDER send -m "$1" $SIGNAL_RECIPIENT > /dev/null
+  local msg
+  msg=$(escape_for_signal "$1")
+  signal-cli -a "$SIGNAL_SENDER" send -m "$msg" "$SIGNAL_RECIPIENT" > /dev/null 2>&1
 }
 
 send_xmpp() {
@@ -369,7 +380,7 @@ handle_project_status() {
     parse_projects_section
     handle_command_line "$@"
     process_projects
-    signal-cli -a $SIGNAL_SENDER receive > /dev/null &
+    signal-cli -a $SIGNAL_SENDER receive > /dev/null 2>&1
 #}
 
 #main "$@"
