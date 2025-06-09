@@ -264,31 +264,55 @@ update_project() {
         return 1
     fi
 
-    local LOCAL_HEAD REMOTE_HEAD
-    IFS=" " read -r LOCAL_HEAD REMOTE_HEAD < <(
-        sudo -u "$USER" bash -c "
-            cd \"$path\" || exit 1
-            git fetch origin > /dev/null 2>&1 || exit 1
-            echo \$(git rev-parse HEAD) \$(git rev-parse origin/$branch)
-        "
-    )
-
-    # Перевірка, що обидва HEAD отримані
-    if [[ -z "$LOCAL_HEAD" || -z "$REMOTE_HEAD" ]]; then
-        echo "$(date '+%F %T') [ERROR] Не вдалося отримати HEAD-стани для $path" >> "$GAP_LOG_FILE"
-        send_message "⚠️ Помилка отримання HEAD-станів для *$path* (гілка: $branch)"
+    if ! sudo -u "$USER" git -C "$path" fetch origin > /dev/null 2>&1; then
+        echo "$(date '+%F %T') [ERROR] Не вдалося виконати fetch для $path" >> "$GAP_LOG_FILE"
+        send_message "⚠️ Помилка при виконанні git fetch для *$path* (гілка: $branch)"
         return 1
     fi
 
+    # Get local HEAD
+    LOCAL_HEAD=$(sudo -u "$USER" git -C "$path" rev-parse HEAD) || {
+        echo "$(date '+%F %T') [ERROR] Не вдалося отримати локальний HEAD у $path" >> "$GAP_LOG_FILE"
+        send_message "⚠️ Помилка отримання локального HEAD у *$path*"
+        return 1
+    }
+
+    # Get remote HEAD
+    REMOTE_HEAD=$(sudo -u "$USER" git -C "$path" rev-parse "origin/$branch") || {
+        echo "$(date '+%F %T') [ERROR] Не вдалося отримати HEAD віддаленої гілки у $path" >> "$GAP_LOG_FILE"
+        send_message "⚠️ Помилка отримання HEAD віддаленої гілки *$branch* у *$path*"
+        return 1
+    }
+
+    #local LOCAL_HEAD REMOTE_HEAD
+    #IFS=" " read -r LOCAL_HEAD REMOTE_HEAD < <(
+    #    sudo -u "$USER" bash -c "
+    #        cd \"$path\" || exit 1
+    #        git fetch origin > /dev/null 2>&1 || exit 1
+    #        echo \$(git rev-parse HEAD) \$(git rev-parse origin/$branch)
+    #    "
+    #)
+
+    # Перевірка, що обидва HEAD отримані
+    #if [[ -z "$LOCAL_HEAD" || -z "$REMOTE_HEAD" ]]; then
+    #    echo "$(date '+%F %T') [ERROR] Не вдалося отримати HEAD-стани для $path" >> "$GAP_LOG_FILE"
+    #    send_message "⚠️ Помилка отримання HEAD-станів для *$path* (гілка: $branch)"
+    #    return 1
+    #fi
+
     if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then
-        return 3
+        return 3 # Немає змін
     fi
 
-    if sudo -u "$USER" bash -c "
-        cd \"$path\" && git diff --exit-code origin/$branch > /dev/null
-    "; then
+    if sudo -u "$USER" git -C "$path" diff --exit-code "origin/$branch" > /dev/null; then
         return 3
     fi
+    
+    #if sudo -u "$USER" bash -c "
+    #    cd \"$path\" && git diff --exit-code origin/$branch > /dev/null
+    #"; then
+    #    return 3
+    #fi
 
     project_name=$(sudo -u "$USER" bash -c "cd \"$path\" && basename \$(git rev-parse --show-toplevel)")
     msg="🔄 Виявлено зміни в репозиторії *$project_name*, що лежить у директорії $path . Оновлюємо..."
