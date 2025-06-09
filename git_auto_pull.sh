@@ -127,6 +127,7 @@ send_telegram() {
 
 send_signal() {
     signal-cli -a $SIGNAL_SENDER send -m "$1" $SIGNAL_RECIPIENT > /dev/null
+    signal-cli -a $SIGNAL_SENDER receive > /dev/null
 }
 
 send_xmpp() {
