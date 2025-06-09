@@ -383,4 +383,4 @@ handle_project_status() {
     signal-cli -a $SIGNAL_SENDER receive > /dev/null 2>&1
 #}
 
-#main "$@"
+##main "$@"
