@@ -1,0 +1,7 @@
+[Unit]
+Description=Legacy git_auto_pull (explicit opt-in)
+Wants=network-online.target
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/git_auto_pull.sh

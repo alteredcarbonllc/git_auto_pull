@@ -1,0 +1,8 @@
+[Unit]
+Description=Legacy git_auto_pull schedule (disabled by default)
+[Timer]
+OnCalendar=*-*-* *:0/2:00
+Persistent=true
+Unit=git_auto_pull.service
+[Install]
+WantedBy=timers.target

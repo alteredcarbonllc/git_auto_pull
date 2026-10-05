@@ -1,65 +1,27 @@
-#!/bin/bash
-
-# Checking root rights
-if [[ $EUID -ne 0 ]]; then
-  echo "This script must be executed with root privileges."
-  exit 1
-fi
-
-# Checking the --all flag
-REMOVE_ALL=false
-for arg in "$@"; do
-    if [[ "$arg" == "--all" ]]; then
-        REMOVE_ALL=true
-        break
-    fi
-done
-
-if [ ! -f .env ]; then
-    echo "Error: .env file not found!" >&2
+#!/bin/sh
+set -eu
+[ "$(id -u)" -eq 0 ] || { echo 'Run as root' >&2; exit 1; }
+purge=false
+case "${1:-}" in '') [ "$#" -eq 0 ] || exit 1;; --purge|--all) [ "$#" -eq 1 ] || exit 1; purge=true;; *) echo 'Usage: uninstall.sh [--purge]' >&2; exit 1;; esac
+systemctl disable --now git_auto_pull.timer 2>/dev/null || true
+if systemctl is-active --quiet git_auto_pull.service || pgrep -f '^(/bin/bash|/usr/bin/bash|/usr/bin/python3) (/usr/bin|/usr/local/bin)/git_auto_pull\.(sh|py)( |$)' >/dev/null; then
+    echo 'Updater still running; wait before uninstalling' >&2
     exit 1
 fi
-
-BEFORE_ENV_VARS=$(compgen -e)
-
-set -a
-. .env
-set +a
-
-AFTER_ENV_VARS=$(compgen -e)
-NEW_ENV_VARS=$(comm -13 <(echo "$BEFORE_ENV_VARS" | sort) <(echo "$AFTER_ENV_VARS" | sort))
-
-TIMER_FILES=()
-for var in $(echo "$NEW_ENV_VARS" | grep ^COPY_); do
-    file_name="${!var}"
-    dir_var=$(echo "$var" | awk -F'_' '{print $(NF-1)"_"$NF}')
-
-    if [[ -z "${!dir_var}" ]]; then
-        echo "Error: Destination variable $dir_var is not set!"
-        continue
+backup=$(mktemp -d /var/backups/git_auto_pull-uninstall.XXXXXX)
+chmod 0700 "$backup"
+for file in /usr/bin/git_auto_pull.sh /usr/local/bin/git_auto_pull.sh /usr/local/bin/git_auto_pull.py /etc/cron.d/git_auto_pull /etc/systemd/system/git_auto_pull.service /etc/systemd/system/git_auto_pull.timer; do
+    if [ -e "$file" ] || [ -L "$file" ]; then
+        cp -a --parents "$file" "$backup/"
+        rm -f -- "$file"
     fi
-
-    dest_path="${!dir_var}"
-    target_file="${dest_path}/$(basename "$file_name")"
-    
-    if [[ "$file_name" == *.timer ]]; then
-        echo "Stopping and disabling $file_name..."
-        systemctl stop "$file_name"
-        systemctl disable "$file_name"
-    fi
-
-    # Skip .conf files unless --all flag is passed
-    if [[ "$file_name" == *.conf && -f "$target_file" && "$REMOVE_ALL" == false ]]; then
-        echo "Skipping $file_name: --all flag not set."
-        continue
-    fi
-
-    echo "Deleting $target_file..."
-    rm -f "$target_file"
 done
-
-# Reloading systemd
-echo "Reloading systemd..."
-#systemctl daemon-reload
-
-echo "Removal completed!"
+if "$purge"; then
+    if [ -e /etc/git_auto_pull.conf ] || [ -L /etc/git_auto_pull.conf ]; then
+        cp -a --parents /etc/git_auto_pull.conf "$backup/"
+        rm -f /etc/git_auto_pull.conf
+    fi
+fi
+systemctl daemon-reload
+systemctl reset-failed git_auto_pull.service 2>/dev/null || true
+echo "UNINSTALLED: git_auto_pull; backup=$backup"

@@ -1,0 +1,9 @@
+[var]
+GIT_USER=git
+RUN_HOOKS=0
+SEND_TELEGRAM=0
+SEND_SIGNAL=0
+SEND_XMPP=0
+[projects]
+# project1_path=/home/git/organization/repository
+# project1_branch=main

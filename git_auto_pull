@@ -1,1 +1,2 @@
-*/2 * * * * root /usr/bin/git_auto_pull.sh
+# Historical cron filename retained intentionally.
+# No cron job: use git_auto_pull.timer only by explicit opt-in.
